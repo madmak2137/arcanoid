@@ -105,8 +105,9 @@ public:
                 }
             }
         }
-
-        // Sterowanie paletk¹
+        
+        // Sterowanie paletka
+        
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left) && paletka.getPosition().x > 0) {
             paletka.move(-0.08f, 0.f);
         }
