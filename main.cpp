@@ -106,7 +106,7 @@ public:
             }
         }
         
-        // Sterowanie paletka
+        // Sterowanie paletk¹
         
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left) && paletka.getPosition().x > 0) {
             paletka.move(-0.08f, 0.f);
@@ -131,7 +131,7 @@ public:
             zresetujPilke();
         }
 
-        // Kolizja z paletk¹
+        // Kolizja z paletk¹¹¹¹
         if (pilka.getGlobalBounds().intersects(paletka.getGlobalBounds())) {
             predkoscPilki.y = -predkoscPilki.y;
         }
