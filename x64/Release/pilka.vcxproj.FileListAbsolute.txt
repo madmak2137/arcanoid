@@ -1,0 +1,2 @@
+D:\projekty\pilka\pilka\x64\Release\pilka.exe
+D:\projekty\arcanoid\x64\Release\pilka.exe
