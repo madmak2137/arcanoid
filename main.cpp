@@ -1,9 +1,6 @@
 #include <SFML/Graphics.hpp>
-#include <SFML/Window.hpp>
 #include <fstream>
 #include <vector>
-#include <string>
-
 #include <iostream>
 
 // Struktura gracza do przechowywania danych
@@ -98,8 +95,7 @@ public:
                     wyswietlPomoc = !wyswietlPomoc;
                 }
                 else if (zdarzenie.key.code == sf::Keyboard::Escape) {
-                    if (zapytajOCzyWyjsc()) {
-                        zapiszStanGry();
+                    if (zapytajOCzyWyjsc()) {            
                         okno.close();
                     }
                 }
@@ -194,11 +190,7 @@ public:
         }
     }
 
-    void zapiszStanGry() {
-        std::ofstream plik("stan_gry.txt");
-        plik << punkty << " " << poziom << "\n";
-        plik.close();
-    }
+
 
     void obsluzKolizjePilkiZCegielka(sf::CircleShape& pilka, sf::RectangleShape& cegielka, sf::Vector2f& predkoscPilki) {
         sf::FloatRect pilkaBounds = pilka.getGlobalBounds();
