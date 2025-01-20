@@ -6,143 +6,156 @@
 #include <sstream>
 
 // Struktura gracza do przechowywania danych
-// Przechowuje nazwê gracza i jego punkty
 struct Gracz {
-    std::string nazwa; // Nazwa gracza
-    int punkty;        // Liczba punktów zdobytych przez gracza
+    std::string nazwa;
+    int punkty;
 };
 
 // Klasa gry
-// Reprezentuje ca³¹ logikê gry oraz elementy graficzne
 class Gra {
 private:
-    sf::RenderWindow okno;  // G³ówne okno gry
-    sf::Font czcionka;      // Czcionka u¿ywana w grze
-    sf::Text tekstStatus;   // Tekst do wyœwietlania statusu gry
-    sf::Text tekstPomoc;    // Tekst wyœwietlany na ekranie pomocy
-    sf::Text animowanyTekst; // Animowany tekst punktacji i poziomu
-    sf::RectangleShape paletka; // Prostok¹t reprezentuj¹cy paletkê
-    sf::CircleShape pilka;      // Ko³o reprezentuj¹ce pi³kê
-    sf::ConvexShape przeszkoda; // Wielok¹t jako przeszkoda
-    sf::RectangleShape tlo;     // Prostok¹t jako t³o gry
-    std::vector<sf::RectangleShape> cegielki; // Wektor przechowuj¹cy cegie³ki
-    std::vector<Gracz> gracze;   // Wektor graczy (do przechowywania wyników)
-    sf::Vector2f predkoscPilki;  // Wektor prêdkoœci pi³ki
-    bool wstrzymana = false;     // Czy gra jest wstrzymana
-    bool wyswietlPomoc = false;  // Czy wyœwietlany jest ekran pomocy
-    int punkty = 0;              // Aktualna liczba punktów gracza
-    int poziom = 1;              // Aktualny poziom gry
-    bool zapiszStan = false;     // Flaga wskazuj¹ca, czy zapisaæ stan gry
+    sf::RenderWindow okno;
+    sf::Font czcionka;
+    sf::Text tekstStatus;
+    sf::Text tekstPomoc;
+    sf::Text animowanyTekst;
+    sf::Text tekstWyboru;
+    sf::RectangleShape paletka;
+    sf::CircleShape pilka;
+    sf::ConvexShape przeszkoda;
+    sf::RectangleShape tlo;
+    std::vector<sf::RectangleShape> cegielki;
+    std::vector<Gracz> gracze;
+    sf::Vector2f predkoscPilki;
+    bool wstrzymana = false;
+    bool wyswietlPomoc = false;
+    int punkty = 0;
+    int poziom = 1;
+    bool zapiszStan = false;
+    float mnoznikTrudnosci = 1.0f; // Mno¿nik prêdkoœci pi³ki
 
 public:
-    // Konstruktor klasy Gra
-    // Inicjalizuje okno gry, czcionkê i przygotowuje elementy gry
-    Gra() : okno(sf::VideoMode(800, 600), "Arkanoid"), predkoscPilki(0.05f, -0.05f) {
-        if (!czcionka.loadFromFile("arial.ttf")) { // £adowanie czcionki
+    Gra() : okno(sf::VideoMode(800, 600), "Arkanoid") {
+        if (!czcionka.loadFromFile("arial.ttf")) {
             throw std::runtime_error("Nie uda³o siê za³adowaæ czcionki!");
         }
-
-        przygotujGre(); // Przygotowanie elementów gry
+        wybierzTrudnosc();
+        przygotujGre();
     }
 
-    // Funkcja przygotowuj¹ca grê
     void przygotujGre() {
-        // Ustawienia paletki (rozmiar, kolor, pozycja)
         paletka.setSize({ 100, 20 });
         paletka.setFillColor(sf::Color::Blue);
         paletka.setPosition(350, 550);
 
-        // Ustawienia pi³ki (rozmiar, kolor, pozycja)
         pilka.setRadius(10.f);
         pilka.setFillColor(sf::Color::Red);
         pilka.setPosition(400, 300);
 
-        // Ustawienia t³a gry (rozmiar, kolor)
         tlo.setSize({ 800, 600 });
         tlo.setFillColor(sf::Color(50, 50, 50));
 
-        // Ustawienia tekstu statusu
         tekstStatus.setFont(czcionka);
         tekstStatus.setCharacterSize(20);
         tekstStatus.setPosition(10, 10);
         tekstStatus.setFillColor(sf::Color::White);
 
-        // Ustawienia animowanego tekstu punktacji
         animowanyTekst.setFont(czcionka);
         animowanyTekst.setCharacterSize(20);
         animowanyTekst.setFillColor(sf::Color::Green);
         animowanyTekst.setPosition(400, 10);
 
-        // Ustawienia tekstu pomocy
         tekstPomoc.setFont(czcionka);
         tekstPomoc.setCharacterSize(20);
         tekstPomoc.setFillColor(sf::Color::Yellow);
         tekstPomoc.setString("Ekran pomocy\nNacisnij F1 aby wrocic\nNacisnij ESC aby wyjsc");
         tekstPomoc.setPosition(200, 250);
 
-        // Tworzenie przeszkody (wielok¹t nieregularny)
         przeszkoda.setPointCount(5);
         przeszkoda.setPoint(0, { 0.f, 0.f });
         przeszkoda.setPoint(1, { 50.f, 10.f });
         przeszkoda.setPoint(2, { 30.f, 50.f });
         przeszkoda.setPoint(3, { -30.f, 50.f });
         przeszkoda.setPoint(4, { -50.f, 10.f });
-        przeszkoda.setFillColor(sf::Color::Magenta);
+        przeszkoda.setFillColor(sf::Color::Red);
         przeszkoda.setPosition(400, 150);
 
-        // Tworzenie cegie³ek w grze
         stworzCegielki();
+        predkoscPilki = { 0.05f * mnoznikTrudnosci, -0.05f * mnoznikTrudnosci };
     }
 
-    // Funkcja tworz¹ca cegie³ki
-    void stworzCegielki() {
-        cegielki.clear(); // Czyœci listê cegie³ek przed ich ponownym utworzeniem
-        for (int i = 0; i < 5; ++i) { // 5 rzêdów cegie³ek
-            for (int j = 0; j < 10; ++j) { // 10 cegie³ek w ka¿dym rzêdzie
-                sf::RectangleShape cegielka({ 60, 20 }); // Rozmiar cegie³ki
-                cegielka.setFillColor(sf::Color::Green); // Kolor cegie³ki
-                cegielka.setPosition(j * 70 + 30, i * 30 + 50); // Pozycja cegie³ki
-                cegielki.push_back(cegielka); // Dodanie cegie³ki do wektora
+    void wybierzTrudnosc() {
+        tekstWyboru.setFont(czcionka);
+        tekstWyboru.setCharacterSize(20);
+        tekstWyboru.setFillColor(sf::Color::White);
+        tekstWyboru.setString("Wybierz poziom trudnosci:\n1. Latwy\n2. Sredni\n3. Ciezki");
+        tekstWyboru.setPosition(200, 250);
+
+        okno.clear();
+        okno.draw(tekstWyboru);
+        okno.display();
+
+        while (true) {
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Num1)) {
+                mnoznikTrudnosci = 1.0f;
+                break;
+            }
+            else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Num2)) {
+                mnoznikTrudnosci = 1.5f;
+                break;
+            }
+            else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Num3)) {
+                mnoznikTrudnosci = 2.0f;
+                break;
             }
         }
     }
 
-    // Funkcja uruchamiaj¹ca grê
+    void stworzCegielki() {
+        cegielki.clear();
+        for (int i = 0; i < 5; ++i) {
+            for (int j = 0; j < 10; ++j) {
+                sf::RectangleShape cegielka({ 60, 20 });
+                cegielka.setFillColor(sf::Color::Green);
+                cegielka.setPosition(j * 70 + 30, i * 30 + 50);
+                cegielki.push_back(cegielka);
+            }
+        }
+    }
+
     void uruchom() {
-        zapytajOStart(); // Pytanie o wczytanie stanu gry
-        while (okno.isOpen()) { // Pêtla gry
-            obsluzZdarzenia(); // Obs³uga zdarzeñ u¿ytkownika
-            if (!wstrzymana && !wyswietlPomoc) { // Aktualizacja tylko, jeœli gra nie jest wstrzymana
+        zapytajOStart();
+        while (okno.isOpen()) {
+            obsluzZdarzenia();
+            if (!wstrzymana && !wyswietlPomoc) {
                 aktualizuj();
             }
-            rysuj(); // Rysowanie elementów gry
+            rysuj();
         }
     }
 
-    // Funkcja obs³uguj¹ca zdarzenia klawiatury i okna
     void obsluzZdarzenia() {
         sf::Event zdarzenie;
-        while (okno.pollEvent(zdarzenie)) { // Sprawdzanie wszystkich zdarzeñ
-            if (zdarzenie.type == sf::Event::Closed) { // Zamkniêcie okna
+        while (okno.pollEvent(zdarzenie)) {
+            if (zdarzenie.type == sf::Event::Closed) {
                 okno.close();
             }
             else if (zdarzenie.type == sf::Event::KeyPressed) {
-                if (zdarzenie.key.code == sf::Keyboard::F1) { // Wyœwietlenie pomocy
+                if (zdarzenie.key.code == sf::Keyboard::F1) {
                     wyswietlPomoc = !wyswietlPomoc;
                 }
-                else if (zdarzenie.key.code == sf::Keyboard::Escape) { // Wyjœcie z gry
+                else if (zdarzenie.key.code == sf::Keyboard::Escape) {
                     if (zapytajOCzyWyjsc()) {
-                        zapiszStanDoPliku(); // Zapis stanu przed wyjœciem
+                        zapiszStanDoPliku();
                         okno.close();
                     }
                 }
-                else if (zdarzenie.key.code == sf::Keyboard::Space) { // Wstrzymanie gry
+                else if (zdarzenie.key.code == sf::Keyboard::Space) {
                     wstrzymana = !wstrzymana;
                 }
             }
         }
 
-        // Sterowanie paletk¹ (strza³ki lewo/prawo)
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left) && paletka.getPosition().x > 0) {
             paletka.move(-0.08f, 0.f);
         }
@@ -151,73 +164,60 @@ public:
         }
     }
 
-    // Funkcja aktualizuj¹ca stan gry
     void aktualizuj() {
-        // Aktualizacja animowanego tekstu (punkty i poziom)
-        std::ostringstream ss;
-        ss << "Punkty: " << punkty << " | Poziom: " << poziom;
-        animowanyTekst.setString(ss.str());
+        std::string tekst = "Punkty: " + std::to_string(punkty) + " | Poziom: " + std::to_string(poziom);
+        animowanyTekst.setString(tekst);
 
-        // Ruch pi³ki
         pilka.move(predkoscPilki);
 
-        // Kolizje pi³ki z krawêdziami okna
         if (pilka.getPosition().x < 0 || pilka.getPosition().x + pilka.getRadius() * 2 > 800) {
-            predkoscPilki.x = -predkoscPilki.x; // Odbicie od lewej lub prawej krawêdzi
+            predkoscPilki.x = -predkoscPilki.x;
         }
         if (pilka.getPosition().y < 0) {
-            predkoscPilki.y = -predkoscPilki.y; // Odbicie od górnej krawêdzi
+            predkoscPilki.y = -predkoscPilki.y;
         }
         else if (pilka.getPosition().y > 600) {
-            zresetujPilke(); // Reset pi³ki po opuszczeniu dolnej krawêdzi
+            zresetujPilke();
         }
 
-        // Kolizja pi³ki z paletk¹
         if (pilka.getGlobalBounds().intersects(paletka.getGlobalBounds())) {
-            predkoscPilki.y = -predkoscPilki.y; // Odbicie od paletki
+            predkoscPilki.y = -predkoscPilki.y;
         }
-
-        // Kolizje pi³ki z cegie³kami
         for (auto it = cegielki.begin(); it != cegielki.end(); ) {
-            if (pilka.getGlobalBounds().intersects(it->getGlobalBounds())) {
-                obsluzKolizjePilkiZCegielka(pilka, *it, predkoscPilki); // Obs³uga kolizji
-                it = cegielki.erase(it); // Usuniêcie cegie³ki
-                punkty += 10; // Dodanie punktów za zniszczenie cegie³ki
+            if (obsluzKolizjePilkiZCegielka(pilka, *it, predkoscPilki)) {
+                it = cegielki.erase(it); // Usuñ cegie³kê i przejdŸ do nastêpnego elementu
+                punkty += 10;           // Dodaj punkty
             }
             else {
-                ++it;
+                ++it; // PrzejdŸ do nastêpnego elementu
             }
         }
     }
 
-    // Funkcja rysuj¹ca elementy gry
     void rysuj() {
-        okno.clear(); // Czyszczenie ekranu
-        okno.draw(tlo); // Rysowanie t³a
-        okno.draw(paletka); // Rysowanie paletki
-        okno.draw(pilka); // Rysowanie pi³ki
-        okno.draw(przeszkoda); // Rysowanie przeszkody
-        okno.draw(animowanyTekst); // Rysowanie animowanego tekstu
+        okno.clear();
+        okno.draw(tlo);
+        okno.draw(paletka);
+        okno.draw(pilka);
+        okno.draw(przeszkoda);
+        okno.draw(animowanyTekst);
 
-        // Rysowanie cegie³ek
         for (const auto& cegielka : cegielki) {
             okno.draw(cegielka);
         }
 
-        if (wyswietlPomoc) { // Wyœwietlenie ekranu pomocy, jeœli aktywny
+        if (wyswietlPomoc) {
             okno.draw(tekstPomoc);
         }
 
-        okno.display(); // Wyœwietlenie na ekranie
+        okno.display();
     }
 
-    // Funkcja resetuj¹ca pi³kê po utracie ¿ycia
     void zresetujPilke() {
-        pilka.setPosition(400, 300); // Reset pozycji pi³ki
-        predkoscPilki = { 0.05f, -0.05f }; // Reset prêdkoœci pi³ki
+        pilka.setPosition(400, 300);
+        predkoscPilki = { 0.05f * mnoznikTrudnosci, -0.05f * mnoznikTrudnosci };
     }
 
-    // Funkcja pytaj¹ca gracza, czy na pewno chce wyjœæ z gry
     bool zapytajOCzyWyjsc() {
         sf::Text pytanie("Czy na pewno chcesz wyjsc? T/N", czcionka, 20);
         pytanie.setPosition(200, 300);
@@ -228,23 +228,21 @@ public:
 
         while (true) {
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::T)) {
-                return true; // Potwierdzenie wyjœcia
+                return true;
             }
             else if (sf::Keyboard::isKeyPressed(sf::Keyboard::N)) {
-                return false; // Anulowanie wyjœcia
+                return false;
             }
         }
     }
 
-    // Funkcja zapisuj¹ca stan gry do pliku
     void zapiszStanDoPliku() {
         std::ofstream plik("stan_gry.txt");
         if (!plik) {
-            std::cerr << "Nie uda³o siê zapisaæ stanu gry!\n";
+            std::cout << "Nie uda³o siê zapisaæ stanu gry!\n";
             return;
         }
 
-        // Zapisujemy dane o punktach, poziomie, pozycjach cegie³ek i pi³ki
         plik << punkty << "\n";
         plik << poziom << "\n";
         plik << pilka.getPosition().x << " " << pilka.getPosition().y << "\n";
@@ -256,15 +254,13 @@ public:
         std::cout << "Stan gry zapisany pomyœlnie!\n";
     }
 
-    // Funkcja wczytuj¹ca stan gry z pliku
     bool wczytajStanZPliku() {
         std::ifstream plik("stan_gry.txt");
         if (!plik) {
-            std::cerr << "Nie znaleziono zapisanego stanu gry!\n";
+            std::cout << "Nie znaleziono zapisanego stanu gry!\n";
             return false;
         }
 
-        // Wczytujemy dane o punktach, poziomie, pozycjach cegie³ek i pi³ki
         plik >> punkty;
         plik >> poziom;
         float pilkaX, pilkaY, predkoscX, predkoscY;
@@ -286,7 +282,6 @@ public:
         return true;
     }
 
-    // Funkcja pytaj¹ca o wczytanie stanu gry
     void zapytajOStart() {
         sf::Text pytanie("Czy chcesz wczytac zapisany stan gry? T/N", czcionka, 20);
         pytanie.setPosition(200, 300);
@@ -298,7 +293,7 @@ public:
         while (true) {
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::T)) {
                 if (!wczytajStanZPliku()) {
-                    std::cerr << "Rozpoczynam nowa gre!\n";
+                    std::cout << "Rozpoczynam nowa gre!\n";
                 }
                 break;
             }
@@ -308,27 +303,61 @@ public:
         }
     }
 
-    void obsluzKolizjePilkiZCegielka(sf::CircleShape& pilka, sf::RectangleShape& cegielka, sf::Vector2f& predkoscPilki) {
+    bool obsluzKolizjePilkiZCegielka(sf::CircleShape& pilka, sf::RectangleShape& cegielka, sf::Vector2f& predkoscPilki) {
         sf::FloatRect pilkaBounds = pilka.getGlobalBounds();
         sf::FloatRect cegielkaBounds = cegielka.getGlobalBounds();
 
-        float lewyNadmiar = cegielkaBounds.left - (pilkaBounds.left + pilkaBounds.width);
-        float prawyNadmiar = (cegielkaBounds.left + cegielkaBounds.width) - pilkaBounds.left;
-        float gornyNadmiar = cegielkaBounds.top - (pilkaBounds.top + pilkaBounds.height);
-        float dolnyNadmiar = (cegielkaBounds.top + cegielkaBounds.height) - pilkaBounds.top;
+        // SprawdŸ, czy wyst¹pi³a kolizja
+        if (pilkaBounds.intersects(cegielkaBounds)) {
+            // Wyznacz po³o¿enia boków pi³ki i cegie³ki
+            float pilkaLewo = pilkaBounds.left;
+            float pilkaPrawo = pilkaBounds.left + pilkaBounds.width;
+            float pilkaGora = pilkaBounds.top;
+            float pilkaDol = pilkaBounds.top + pilkaBounds.height;
 
-        float minimalnyNadmiarX = std::abs(lewyNadmiar) < std::abs(prawyNadmiar) ? lewyNadmiar : prawyNadmiar;
-        float minimalnyNadmiarY = std::abs(gornyNadmiar) < std::abs(dolnyNadmiar) ? gornyNadmiar : dolnyNadmiar;
+            float cegielkaLewo = cegielkaBounds.left;
+            float cegielkaPrawo = cegielkaBounds.left + cegielkaBounds.width;
+            float cegielkaGora = cegielkaBounds.top;
+            float cegielkaDol = cegielkaBounds.top + cegielkaBounds.height;
 
-        if (std::abs(minimalnyNadmiarX) < std::abs(minimalnyNadmiarY)) {
-            predkoscPilki.x = -predkoscPilki.x; // Odbicie od boku
+            // Wyznacz minimalny przesuniêcie (nadmiar) na ka¿dej osi
+            float nadmiarLewo = pilkaPrawo - cegielkaLewo;
+            float nadmiarPrawo = cegielkaPrawo - pilkaLewo;
+            float nadmiarGora = pilkaDol - cegielkaGora;
+            float nadmiarDol = cegielkaDol - pilkaGora;
+
+            // ZnajdŸ najmniejsze przesuniêcie, aby ustaliæ stronê kolizji
+            float minimalnyNadmiarX = (std::abs(nadmiarLewo) < std::abs(nadmiarPrawo)) ? -nadmiarLewo : nadmiarPrawo;
+            float minimalnyNadmiarY = (std::abs(nadmiarGora) < std::abs(nadmiarDol)) ? -nadmiarGora : nadmiarDol;
+
+            // Kolizja w osi X
+            if (std::abs(minimalnyNadmiarX) < std::abs(minimalnyNadmiarY)) {
+                predkoscPilki.x = -predkoscPilki.x;
+                // Korekta pozycji pi³ki, aby unikn¹æ nak³adania siê
+                if (minimalnyNadmiarX < 0) {
+                    pilka.setPosition(cegielkaLewo - pilkaBounds.width, pilka.getPosition().y);
+                }
+                else {
+                    pilka.setPosition(cegielkaPrawo, pilka.getPosition().y);
+                }
+            }
+            // Kolizja w osi Y
+            else {
+                predkoscPilki.y = -predkoscPilki.y;
+                // Korekta pozycji pi³ki, aby unikn¹æ nak³adania siê
+                if (minimalnyNadmiarY < 0) {
+                    pilka.setPosition(pilka.getPosition().x, cegielkaGora - pilkaBounds.height);
+                }
+                else {
+                    pilka.setPosition(pilka.getPosition().x, cegielkaDol);
+                }
+            }
+            return true; // Kolizja wyst¹pi³a
         }
-        else {
-            predkoscPilki.y = -predkoscPilki.y; // Odbicie od góry lub do³u
-        }
+        return false; // Brak kolizji
     }
-};
 
+};
 int main() {
     Gra gra;
     gra.uruchom();
